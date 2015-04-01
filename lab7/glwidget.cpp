@@ -44,13 +44,11 @@ void GLWidget::keyPressEvent(QKeyEvent *event) {
 }
 
 void GLWidget::wheelEvent(QWheelEvent *event) {
-    QPoint numPixels = event->pixelDelta();
-    QPoint numDegrees = event->angleDelta() / 8;
+    makeCurrent();
+    viewDist += event->delta();
 
-    if (!numPixels.isNull()) {
-        viewDist += numPixels.y();
-    } else if (!numDegrees.isNull()) {
-        viewDist += numPixels.y();
+    if (viewDist > -5.0f) {
+        viewDist = -5.0f;
     }
 
     viewMatrix = lookAt(vec3(0,0,viewDist),vec3(0,0,0),vec3(0,1,0));
@@ -359,6 +357,19 @@ void GLWidget::initializeGL() {
     glEnable(GL_DEPTH_TEST);
 
     initializeModel(":/models/bunny.obj");
+
+    viewDist = -120;
+    viewMatrix = lookAt(vec3(0,0,viewDist),vec3(0,0,0),vec3(0,1,0));
+
+    modelMatrix = mat4(1.0f);
+
+    glUseProgram(modelProg);
+    glUniformMatrix4fv(modelViewMatrixLoc, 1, false, value_ptr(viewMatrix));
+    glUniformMatrix4fv(modelModelMatrixLoc, 1, false, value_ptr(modelMatrix));
+
+    glUseProgram(gridProg);
+    glUniformMatrix4fv(gridViewMatrixLoc, 1, false, value_ptr(viewMatrix));
+    glUniformMatrix4fv(gridModelMatrixLoc, 1, false, value_ptr(modelMatrix));
 }
 
 void GLWidget::resizeGL(int w, int h) {
@@ -368,19 +379,12 @@ void GLWidget::resizeGL(int w, int h) {
     float aspect = (float)w/h;
 
     projMatrix = perspective(45.0f, aspect, 1.0f, 10000.0f);
-    viewMatrix = lookAt(vec3(0,0,-120),vec3(0,0,0),vec3(0,1,0));
-
-    modelMatrix = mat4(1.0f);
 
     glUseProgram(modelProg);
     glUniformMatrix4fv(modelProjMatrixLoc, 1, false, value_ptr(projMatrix));
-    glUniformMatrix4fv(modelViewMatrixLoc, 1, false, value_ptr(viewMatrix));
-    glUniformMatrix4fv(modelModelMatrixLoc, 1, false, value_ptr(modelMatrix));
 
     glUseProgram(gridProg);
     glUniformMatrix4fv(gridProjMatrixLoc, 1, false, value_ptr(projMatrix));
-    glUniformMatrix4fv(gridViewMatrixLoc, 1, false, value_ptr(viewMatrix));
-    glUniformMatrix4fv(gridModelMatrixLoc, 1, false, value_ptr(modelMatrix));
 }
 
 void GLWidget::paintGL() {
@@ -481,17 +485,16 @@ void GLWidget::mousePressEvent(QMouseEvent *event) {
 }
 
 void GLWidget::mouseMoveEvent(QMouseEvent *event) {
+    makeCurrent();
     vec2 pt(event->x(), event->y());
     vec3 vPt = normalize(pointOnVirtualTrackball(pt));
 
     vec3 axis = cross(lastVPt, vPt);
-//    vec3 axis = cross(vPt, lastVPt);
     if(length(axis) >= .00001) {
         axis = normalize(axis);
         float angle = acos(dot(vPt,lastVPt));
         mat4 r = rotate(mat4(1.0f), angle, axis);
 
-//        viewMatrix = viewMatrix*r;
         modelMatrix = r*modelMatrix;
 
         glUseProgram(modelProg);
