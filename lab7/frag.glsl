@@ -23,5 +23,4 @@ void main() {
     vec3 diffuse = diffuseColor*dot(N,L);
 
     color_out = vec4(lightIntensity*lightColor*diffuse+ambientColor, 1);
-    color_out = vec4(1);
 }
